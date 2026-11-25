@@ -1,0 +1,8 @@
+# 构建产物（由 build_tool.py 生成）不参与换行转换，保证本地与 CI 逐字节一致
+dist/*.html -text
+
+*.py   text eol=lf
+*.js   text eol=lf
+*.md   text eol=lf
+*.yml  text eol=lf
+src/*.html text eol=lf

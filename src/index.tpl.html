@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>组卷网试卷 → Word 转换工具</title>
+<style>
+  * { box-sizing: border-box; }
+  :root {
+    --blue: #2f6bff;
+    --blue-d: #1b4fd8;
+    --ink: #1c2333;
+    --ink2: #5b6579;
+    --line: #e3e8f2;
+    --bg: #eef2fa;
+  }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "Segoe UI", "Microsoft YaHei", "PingFang SC", sans-serif;
+    background: radial-gradient(1200px 600px at 50% -10%, #dfe9ff 0%, var(--bg) 45%, #e9eefb 100%);
+    color: var(--ink);
+    min-height: 100vh;
+    padding: 28px 16px 60px;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 880px; margin: 0 auto; }
+  .card {
+    background: #fff;
+    border-radius: 18px;
+    box-shadow: 0 10px 40px rgba(28, 45, 90, .10), 0 2px 6px rgba(28, 45, 90, .05);
+    padding: 30px 34px 26px;
+  }
+  header { text-align: center; margin-bottom: 22px; }
+  h1 { font-size: 24px; margin: 0 0 6px; letter-spacing: .5px; }
+  h1 .accent { color: var(--blue); }
+  .sub { color: var(--ink2); font-size: 13px; line-height: 1.7; margin: 0; }
+
+  .step { margin-top: 20px; }
+  .step-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .badge {
+    width: 22px; height: 22px; border-radius: 50%;
+    background: var(--blue); color: #fff; font-size: 12px; font-weight: 700;
+    display: inline-flex; align-items: center; justify-content: center; flex: none;
+  }
+  .step-title { font-size: 14px; font-weight: 600; }
+  .step-note { font-size: 12px; color: #8b94a7; margin-left: 4px; }
+
+  .drop {
+    border: 2px dashed #c8d3ea; border-radius: 14px;
+    padding: 16px 20px; cursor: pointer;
+    background: #fafbff; transition: .18s;
+    display: flex; align-items: center; gap: 14px; justify-content: flex-start;
+    min-height: 74px; text-align: left;
+  }
+  .drop:hover, .drop.active { border-color: var(--blue); background: #f2f6ff; }
+  .drop .ico { font-size: 22px; opacity: .85; flex: none; }
+  .drop .tx { display: block; }
+  .drop .t1 { display: block; font-size: 13.5px; font-weight: 600; }
+  .drop .t2 { display: block; font-size: 12px; color: #8b94a7; margin-top: 3px; }
+  .file-info {
+    font-size: 12px; color: #8b94a7; background: #f4f6fb;
+    border-radius: 8px; padding: 7px 10px; margin-top: 8px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .file-info.ok { color: #16794a; background: #eefaf3; }
+  input[type=file] { display: none; }
+
+  .opts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .opt label { display: block; font-size: 12px; color: var(--ink2); margin-bottom: 5px; }
+  .opt select {
+    width: 100%; padding: 8px 28px 8px 10px; font-size: 13px; color: var(--ink);
+    border: 1px solid var(--line); border-radius: 9px; background-color: #fff;
+    appearance: none; -webkit-appearance: none; cursor: pointer;
+    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%237b859b' stroke-width='1.6' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 10px center;
+  }
+  .opt select:focus { outline: 2px solid #cddcff; border-color: var(--blue); }
+  .check { display: flex; align-items: center; gap: 8px; font-size: 13px; margin-top: 14px; color: var(--ink2); }
+  .check input { width: 16px; height: 16px; accent-color: var(--blue); }
+
+  button.primary {
+    width: 100%; margin-top: 22px; padding: 15px; border: 0; border-radius: 12px;
+    background: linear-gradient(180deg, #4b82ff, var(--blue));
+    color: #fff; font-size: 16px; font-weight: 700; letter-spacing: 1px;
+    cursor: pointer; transition: .18s;
+    box-shadow: 0 8px 20px rgba(47, 107, 255, .28);
+  }
+  button.primary:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 10px 24px rgba(47,107,255,.34); }
+  button.primary:disabled { background: #b9c8ea; box-shadow: none; cursor: not-allowed; }
+
+  .status { display: none; margin-top: 14px; padding: 11px 14px; border-radius: 10px; font-size: 13px; line-height: 1.6; }
+  .status.info { display: block; background: #eef4ff; color: var(--blue-d); }
+  .status.success { display: block; background: #ecf9f1; color: #147a45; }
+  .status.error { display: block; background: #fdeeee; color: #b3261e; }
+
+  .preview { display: none; margin-top: 16px; background: #f7f9fe; border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px; }
+  .preview.show { display: block; }
+  .pv-row { display: flex; gap: 10px; font-size: 13px; padding: 5px 0; border-bottom: 1px dashed #e8edf8; }
+  .pv-row:last-child { border-bottom: 0; }
+  .pv-k { color: #8b94a7; flex: none; width: 78px; }
+  .pv-v { color: var(--ink); flex: 1; word-break: break-all; }
+  .warn { color: #b3261e; }
+
+  .result { display: none; margin-top: 16px; padding: 16px 18px; border-radius: 12px; background: #f0fbf5; border: 1px solid #c8ecd8; }
+  .result.show { display: block; }
+  .ok-title { font-size: 15px; font-weight: 700; color: #147a45; }
+  .ok-meta { font-size: 12.5px; color: #4c7a62; margin-top: 6px; }
+  .warn-box { margin-top: 10px; font-size: 12.5px; color: #b3261e; line-height: 1.7; background: #fff6f5; border-radius: 8px; padding: 8px 10px; }
+  .hint { font-size: 12px; color: #8b94a7; margin-top: 8px; }
+
+  details.tips { margin-top: 22px; border-top: 1px solid var(--line); padding-top: 14px; }
+  details.tips summary { cursor: pointer; font-size: 13.5px; font-weight: 600; color: var(--ink2); }
+  details.tips .body { font-size: 12.8px; color: var(--ink2); line-height: 1.85; margin-top: 10px; }
+  details.tips b { color: var(--ink); }
+  details.tips code { background: #f2f5fb; padding: 1px 5px; border-radius: 4px; font-size: 12px; }
+
+  footer { text-align: center; font-size: 12px; color: #98a2b6; margin-top: 18px; }
+
+  body.dragging::after {
+    content: "松开即可载入文件 / 文件夹";
+    position: fixed; inset: 0; background: rgba(47,107,255,.08);
+    border: 3px dashed var(--blue); border-radius: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; color: var(--blue-d); font-weight: 700;
+    pointer-events: none; z-index: 99;
+  }
+  @media (max-width: 640px) {
+    .card { padding: 22px 18px; }
+    .opts { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <header>
+      <h1>组卷网试卷 <span class="accent">→</span> Word 文档</h1>
+      <p class="sub">上传保存下来的试卷网页 + 素材文件夹，自动排出可编辑、可打印的 Word 试卷<br>
+        纯本地处理，不联网、不上传任何文件</p>
+    </header>
+
+    <div class="step">
+      <div class="step-head"><span class="badge">1</span><span class="step-title">试卷网页</span><span class="step-note">.html 文件</span></div>
+      <div class="drop" id="htmlZone">
+        <span class="ico">📄</span>
+        <span class="tx">
+          <span class="t1">点击选择，或把 html 文件拖进来</span>
+          <span class="t2">例如 212电学练习.html / 组卷中心.html</span>
+        </span>
+      </div>
+      <input type="file" id="htmlInput" accept=".html,.htm,text/html">
+      <div class="file-info" id="htmlInfo">尚未选择试卷网页</div>
+    </div>
+
+    <div class="step">
+      <div class="step-head"><span class="badge">2</span><span class="step-title">素材文件夹</span><span class="step-note">网页同名的 _files 文件夹</span></div>
+      <div class="drop" id="dirZone">
+        <span class="ico">🗂️</span>
+        <span class="tx">
+          <span class="t1">点击选择文件夹，或把整个文件夹拖进来</span>
+          <span class="t2">例如 212电学练习_files（图片、公式都在里面）</span>
+        </span>
+      </div>
+      <input type="file" id="dirInput" webkitdirectory directory multiple>
+      <div class="file-info" id="dirInfo">尚未选择素材文件夹</div>
+    </div>
+
+    <div class="step">
+      <div class="step-head"><span class="badge">3</span><span class="step-title">排版参数</span></div>
+      <div class="opts">
+        <div class="opt">
+          <label for="optFont">正文字号</label>
+          <select id="optFont">
+            <option value="12" selected>小四（12pt，推荐）</option>
+            <option value="14">四号（14pt）</option>
+            <option value="10.5">五号（10.5pt）</option>
+            <option value="15">小三（15pt）</option>
+          </select>
+        </div>
+        <div class="opt">
+          <label for="optLine">行距</label>
+          <select id="optLine">
+            <option value="1.05" selected>紧凑（1.05 倍）</option>
+            <option value="1.0">单倍</option>
+            <option value="1.15">1.15 倍</option>
+            <option value="1.5">1.5 倍</option>
+          </select>
+        </div>
+        <div class="opt">
+          <label for="optImg">图片大小</label>
+          <select id="optImg">
+            <option value="0.8">偏小（80%）</option>
+            <option value="1" selected>跟随文字（100%）</option>
+            <option value="1.2">偏大（120%）</option>
+          </select>
+        </div>
+        <div class="opt">
+          <label for="optMargin">页边距</label>
+          <select id="optMargin">
+            <option value="1.6">窄（1.6cm）</option>
+            <option value="1.9" selected>标准（1.9cm）</option>
+            <option value="2.2">宽（2.2cm）</option>
+          </select>
+        </div>
+        <div class="opt">
+          <label for="optGap">题目间距</label>
+          <select id="optGap">
+            <option value="3">紧凑</option>
+            <option value="6" selected>适中</option>
+            <option value="10">宽松</option>
+          </select>
+        </div>
+        <div class="opt">
+          <label for="optAns">答案与解析</label>
+          <select id="optAns">
+            <option value="0" selected>不导出</option>
+            <option value="1">一起导出</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <button class="primary" id="convertBtn" disabled>生成 Word 文档</button>
+    <div class="status" id="status"></div>
+    <div class="preview" id="preview"></div>
+    <div class="result" id="result"></div>
+
+    <details class="tips" id="tips">
+      <summary>使用说明 / 常见问题</summary>
+      <div class="body">
+        <p><b>1. 网页从哪来？</b>打开学科网组卷结果的「试卷预览」页面，按 <code>Ctrl + S</code> → 保存类型选「网页，仅 HTML」，
+          会得到一个 <code>xxx.html</code> 和一个 <code>xxx_files</code> 文件夹。两者要一起保留。</p>
+        <p><b>2. 图片为什么不是截图？</b>工具是逐题解析网页结构：题干、选项、填空横线、上下标、数据表格都会重排成 Word 原生内容，
+          只有电路图/实物图这类真图片才按原尺寸嵌入，所以不会出现一大片空白、也不会把整页当图片贴进去。</p>
+        <p><b>3. 公式（如 A₁、U_AB）怎么处理？</b>网页里它们是矢量小图，工具会用浏览器把它们渲染成 6 倍高清 PNG，
+          按与正文相同的比例内嵌，打印清晰、不会发虚。</p>
+        <p><b>4. 生成的 Word 能改吗？</b>能。文字、表格都是 Word 原生对象，可以直接改字号、删题、调整顺序；
+          打印或按 <code>Ctrl + P</code> 另存 PDF 即可。</p>
+        <p><b>5. 提示「缺 N 个图片文件」？</b>说明素材文件夹没选全或网页引用的图片不在里面，缺的图会以空白占位，
+          其他内容照常生成。</p>
+      </div>
+    </details>
+  </div>
+  <footer>组卷转 Word 工具 · 单文件离线版</footer>
+</div>
+<!--SCRIPTS-->
+</body>
+</html>

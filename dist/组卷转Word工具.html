@@ -1,0 +1,1667 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>组卷网试卷 → Word 转换工具</title>
+<style>
+  * { box-sizing: border-box; }
+  :root {
+    --blue: #2f6bff;
+    --blue-d: #1b4fd8;
+    --ink: #1c2333;
+    --ink2: #5b6579;
+    --line: #e3e8f2;
+    --bg: #eef2fa;
+  }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "Segoe UI", "Microsoft YaHei", "PingFang SC", sans-serif;
+    background: radial-gradient(1200px 600px at 50% -10%, #dfe9ff 0%, var(--bg) 45%, #e9eefb 100%);
+    color: var(--ink);
+    min-height: 100vh;
+    padding: 28px 16px 60px;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 880px; margin: 0 auto; }
+  .card {
+    background: #fff;
+    border-radius: 18px;
+    box-shadow: 0 10px 40px rgba(28, 45, 90, .10), 0 2px 6px rgba(28, 45, 90, .05);
+    padding: 30px 34px 26px;
+  }
+  header { text-align: center; margin-bottom: 22px; }
+  h1 { font-size: 24px; margin: 0 0 6px; letter-spacing: .5px; }
+  h1 .accent { color: var(--blue); }
+  .sub { color: var(--ink2); font-size: 13px; line-height: 1.7; margin: 0; }
+
+  .step { margin-top: 20px; }
+  .step-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .badge {
+    width: 22px; height: 22px; border-radius: 50%;
+    background: var(--blue); color: #fff; font-size: 12px; font-weight: 700;
+    display: inline-flex; align-items: center; justify-content: center; flex: none;
+  }
+  .step-title { font-size: 14px; font-weight: 600; }
+  .step-note { font-size: 12px; color: #8b94a7; margin-left: 4px; }
+
+  .drop {
+    border: 2px dashed #c8d3ea; border-radius: 14px;
+    padding: 16px 20px; cursor: pointer;
+    background: #fafbff; transition: .18s;
+    display: flex; align-items: center; gap: 14px; justify-content: flex-start;
+    min-height: 74px; text-align: left;
+  }
+  .drop:hover, .drop.active { border-color: var(--blue); background: #f2f6ff; }
+  .drop .ico { font-size: 22px; opacity: .85; flex: none; }
+  .drop .tx { display: block; }
+  .drop .t1 { display: block; font-size: 13.5px; font-weight: 600; }
+  .drop .t2 { display: block; font-size: 12px; color: #8b94a7; margin-top: 3px; }
+  .file-info {
+    font-size: 12px; color: #8b94a7; background: #f4f6fb;
+    border-radius: 8px; padding: 7px 10px; margin-top: 8px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .file-info.ok { color: #16794a; background: #eefaf3; }
+  input[type=file] { display: none; }
+
+  .opts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .opt label { display: block; font-size: 12px; color: var(--ink2); margin-bottom: 5px; }
+  .opt select {
+    width: 100%; padding: 8px 28px 8px 10px; font-size: 13px; color: var(--ink);
+    border: 1px solid var(--line); border-radius: 9px; background-color: #fff;
+    appearance: none; -webkit-appearance: none; cursor: pointer;
+    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%237b859b' stroke-width='1.6' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 10px center;
+  }
+  .opt select:focus { outline: 2px solid #cddcff; border-color: var(--blue); }
+  .check { display: flex; align-items: center; gap: 8px; font-size: 13px; margin-top: 14px; color: var(--ink2); }
+  .check input { width: 16px; height: 16px; accent-color: var(--blue); }
+
+  button.primary {
+    width: 100%; margin-top: 22px; padding: 15px; border: 0; border-radius: 12px;
+    background: linear-gradient(180deg, #4b82ff, var(--blue));
+    color: #fff; font-size: 16px; font-weight: 700; letter-spacing: 1px;
+    cursor: pointer; transition: .18s;
+    box-shadow: 0 8px 20px rgba(47, 107, 255, .28);
+  }
+  button.primary:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 10px 24px rgba(47,107,255,.34); }
+  button.primary:disabled { background: #b9c8ea; box-shadow: none; cursor: not-allowed; }
+
+  .status { display: none; margin-top: 14px; padding: 11px 14px; border-radius: 10px; font-size: 13px; line-height: 1.6; }
+  .status.info { display: block; background: #eef4ff; color: var(--blue-d); }
+  .status.success { display: block; background: #ecf9f1; color: #147a45; }
+  .status.error { display: block; background: #fdeeee; color: #b3261e; }
+
+  .preview { display: none; margin-top: 16px; background: #f7f9fe; border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px; }
+  .preview.show { display: block; }
+  .pv-row { display: flex; gap: 10px; font-size: 13px; padding: 5px 0; border-bottom: 1px dashed #e8edf8; }
+  .pv-row:last-child { border-bottom: 0; }
+  .pv-k { color: #8b94a7; flex: none; width: 78px; }
+  .pv-v { color: var(--ink); flex: 1; word-break: break-all; }
+  .warn { color: #b3261e; }
+
+  .result { display: none; margin-top: 16px; padding: 16px 18px; border-radius: 12px; background: #f0fbf5; border: 1px solid #c8ecd8; }
+  .result.show { display: block; }
+  .ok-title { font-size: 15px; font-weight: 700; color: #147a45; }
+  .ok-meta { font-size: 12.5px; color: #4c7a62; margin-top: 6px; }
+  .warn-box { margin-top: 10px; font-size: 12.5px; color: #b3261e; line-height: 1.7; background: #fff6f5; border-radius: 8px; padding: 8px 10px; }
+  .hint { font-size: 12px; color: #8b94a7; margin-top: 8px; }
+
+  details.tips { margin-top: 22px; border-top: 1px solid var(--line); padding-top: 14px; }
+  details.tips summary { cursor: pointer; font-size: 13.5px; font-weight: 600; color: var(--ink2); }
+  details.tips .body { font-size: 12.8px; color: var(--ink2); line-height: 1.85; margin-top: 10px; }
+  details.tips b { color: var(--ink); }
+  details.tips code { background: #f2f5fb; padding: 1px 5px; border-radius: 4px; font-size: 12px; }
+
+  footer { text-align: center; font-size: 12px; color: #98a2b6; margin-top: 18px; }
+
+  body.dragging::after {
+    content: "松开即可载入文件 / 文件夹";
+    position: fixed; inset: 0; background: rgba(47,107,255,.08);
+    border: 3px dashed var(--blue); border-radius: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; color: var(--blue-d); font-weight: 700;
+    pointer-events: none; z-index: 99;
+  }
+  @media (max-width: 640px) {
+    .card { padding: 22px 18px; }
+    .opts { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <header>
+      <h1>组卷网试卷 <span class="accent">→</span> Word 文档</h1>
+      <p class="sub">上传保存下来的试卷网页 + 素材文件夹，自动排出可编辑、可打印的 Word 试卷<br>
+        纯本地处理，不联网、不上传任何文件</p>
+    </header>
+
+    <div class="step">
+      <div class="step-head"><span class="badge">1</span><span class="step-title">试卷网页</span><span class="step-note">.html 文件</span></div>
+      <div class="drop" id="htmlZone">
+        <span class="ico">📄</span>
+        <span class="tx">
+          <span class="t1">点击选择，或把 html 文件拖进来</span>
+          <span class="t2">例如 212电学练习.html / 组卷中心.html</span>
+        </span>
+      </div>
+      <input type="file" id="htmlInput" accept=".html,.htm,text/html">
+      <div class="file-info" id="htmlInfo">尚未选择试卷网页</div>
+    </div>
+
+    <div class="step">
+      <div class="step-head"><span class="badge">2</span><span class="step-title">素材文件夹</span><span class="step-note">网页同名的 _files 文件夹</span></div>
+      <div class="drop" id="dirZone">
+        <span class="ico">🗂️</span>
+        <span class="tx">
+          <span class="t1">点击选择文件夹，或把整个文件夹拖进来</span>
+          <span class="t2">例如 212电学练习_files（图片、公式都在里面）</span>
+        </span>
+      </div>
+      <input type="file" id="dirInput" webkitdirectory directory multiple>
+      <div class="file-info" id="dirInfo">尚未选择素材文件夹</div>
+    </div>
+
+    <div class="step">
+      <div class="step-head"><span class="badge">3</span><span class="step-title">排版参数</span></div>
+      <div class="opts">
+        <div class="opt">
+          <label for="optFont">正文字号</label>
+          <select id="optFont">
+            <option value="12" selected>小四（12pt，推荐）</option>
+            <option value="14">四号（14pt）</option>
+            <option value="10.5">五号（10.5pt）</option>
+            <option value="15">小三（15pt）</option>
+          </select>
+        </div>
+        <div class="opt">
+          <label for="optLine">行距</label>
+          <select id="optLine">
+            <option value="1.05" selected>紧凑（1.05 倍）</option>
+            <option value="1.0">单倍</option>
+            <option value="1.15">1.15 倍</option>
+            <option value="1.5">1.5 倍</option>
+          </select>
+        </div>
+        <div class="opt">
+          <label for="optImg">图片大小</label>
+          <select id="optImg">
+            <option value="0.8">偏小（80%）</option>
+            <option value="1" selected>跟随文字（100%）</option>
+            <option value="1.2">偏大（120%）</option>
+          </select>
+        </div>
+        <div class="opt">
+          <label for="optMargin">页边距</label>
+          <select id="optMargin">
+            <option value="1.6">窄（1.6cm）</option>
+            <option value="1.9" selected>标准（1.9cm）</option>
+            <option value="2.2">宽（2.2cm）</option>
+          </select>
+        </div>
+        <div class="opt">
+          <label for="optGap">题目间距</label>
+          <select id="optGap">
+            <option value="3">紧凑</option>
+            <option value="6" selected>适中</option>
+            <option value="10">宽松</option>
+          </select>
+        </div>
+        <div class="opt">
+          <label for="optAns">答案与解析</label>
+          <select id="optAns">
+            <option value="0" selected>不导出</option>
+            <option value="1">一起导出</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <button class="primary" id="convertBtn" disabled>生成 Word 文档</button>
+    <div class="status" id="status"></div>
+    <div class="preview" id="preview"></div>
+    <div class="result" id="result"></div>
+
+    <details class="tips" id="tips">
+      <summary>使用说明 / 常见问题</summary>
+      <div class="body">
+        <p><b>1. 网页从哪来？</b>打开学科网组卷结果的「试卷预览」页面，按 <code>Ctrl + S</code> → 保存类型选「网页，仅 HTML」，
+          会得到一个 <code>xxx.html</code> 和一个 <code>xxx_files</code> 文件夹。两者要一起保留。</p>
+        <p><b>2. 图片为什么不是截图？</b>工具是逐题解析网页结构：题干、选项、填空横线、上下标、数据表格都会重排成 Word 原生内容，
+          只有电路图/实物图这类真图片才按原尺寸嵌入，所以不会出现一大片空白、也不会把整页当图片贴进去。</p>
+        <p><b>3. 公式（如 A₁、U_AB）怎么处理？</b>网页里它们是矢量小图，工具会用浏览器把它们渲染成 6 倍高清 PNG，
+          按与正文相同的比例内嵌，打印清晰、不会发虚。</p>
+        <p><b>4. 生成的 Word 能改吗？</b>能。文字、表格都是 Word 原生对象，可以直接改字号、删题、调整顺序；
+          打印或按 <code>Ctrl + P</code> 另存 PDF 即可。</p>
+        <p><b>5. 提示「缺 N 个图片文件」？</b>说明素材文件夹没选全或网页引用的图片不在里面，缺的图会以空白占位，
+          其他内容照常生成。</p>
+      </div>
+    </details>
+  </div>
+  <footer>组卷转 Word 工具 · 单文件离线版</footer>
+</div>
+<script>
+/* ===== core.js ===== */
+/* ===================================================================
+ * Paper2Docx core — 组卷网试卷网页 -> Word(.docx) 结构化转换引擎
+ * 纯前端、零依赖：解析 DOM -> 生成 OOXML -> 自己打包 ZIP
+ * =================================================================== */
+(function (global) {
+  'use strict';
+
+  var EMU = 360000;            // 1cm = 360000 EMU
+  var PT2CM = 2.54 / 72;
+  var TWIP = 567;              // 1cm = 567 twips
+
+  var DEFAULT_OPTIONS = {
+    fontSize: 12,             // 小四=12, 四号=14, 五号=10.5, 三号=16
+    lineSpacing: 1.05,        // 行距倍数
+    imgScale: 1.0,            // 图片额外缩放
+    margin: 1.9,              // 页边距 cm
+    includeAnswers: false,    // 是否导出【答案】【解析】
+    questionGap: 6,           // 题间距 pt
+    titleFont: '黑体',
+    bodyFont: '宋体',
+    latinFont: 'Times New Roman',
+    showPageNumber: true,
+    keepImageWithText: true,  // 图与前文不跨页拆开
+    autoOptionColumns: true   // 按网页 cols 排选项
+  };
+
+  /* ---------------- 小工具 ---------------- */
+  function esc(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+  function tw(cm) { return Math.round(cm * TWIP); }
+  function emu(cm) { return Math.round(cm * EMU); }
+  function log() { }
+
+  /* ---------------- CRC32 + ZIP ---------------- */
+  var CRC_TABLE = (function () {
+    var t = new Int32Array(256);
+    for (var n = 0; n < 256; n++) {
+      var c = n;
+      for (var k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+      t[n] = c;
+    }
+    return t;
+  })();
+
+  function crc32(u8) {
+    var c = -1;
+    for (var i = 0; i < u8.length; i++) c = CRC_TABLE[(c ^ u8[i]) & 0xFF] ^ (c >>> 8);
+    return (c ^ -1) >>> 0;
+  }
+
+  function u8(str) {
+    return new TextEncoder().encode(str);
+  }
+
+  async function deflateRaw(bytes) {
+    if (typeof CompressionStream === 'undefined') return null;
+    try {
+      var cs = new CompressionStream('deflate-raw');
+      var stream = new Blob([bytes]).stream().pipeThrough(cs);
+      var buf = await new Response(stream).arrayBuffer();
+      return new Uint8Array(buf);
+    } catch (e) { return null; }
+  }
+
+  /** entries: [{name, data:Uint8Array, store:bool}] -> Blob(zip) */
+  async function makeZip(entries) {
+    var chunks = [];
+    var central = [];
+    var offset = 0;
+    var now = new Date();
+    var dosTime = ((now.getHours() << 11) | (now.getMinutes() << 5) | (now.getSeconds() >> 1)) & 0xFFFF;
+    var dosDate = (((now.getFullYear() - 1980) << 9) | ((now.getMonth() + 1) << 5) | now.getDate()) & 0xFFFF;
+
+    for (var i = 0; i < entries.length; i++) {
+      var e = entries[i];
+      var data = e.data;
+      var method = 0;
+      var comp = data;
+      if (!e.store) {
+        var d = await deflateRaw(data);
+        if (d && d.length < data.length) { comp = d; method = 8; }
+      }
+      var nameBytes = u8(e.name);
+      var crc = crc32(data);
+
+      var lh = new Uint8Array(30 + nameBytes.length);
+      var dv = new DataView(lh.buffer);
+      dv.setUint32(0, 0x04034b50, true);
+      dv.setUint16(4, 20, true);
+      dv.setUint16(6, 0x0800, true);        // UTF-8 filename
+      dv.setUint16(8, method, true);
+      dv.setUint16(10, dosTime, true);
+      dv.setUint16(12, dosDate, true);
+      dv.setUint32(14, crc, true);
+      dv.setUint32(18, comp.length, true);
+      dv.setUint32(22, data.length, true);
+      dv.setUint16(26, nameBytes.length, true);
+      dv.setUint16(28, 0, true);
+      lh.set(nameBytes, 30);
+
+      chunks.push(lh, comp);
+
+      var cd = new Uint8Array(46 + nameBytes.length);
+      var dv2 = new DataView(cd.buffer);
+      dv2.setUint32(0, 0x02014b50, true);
+      dv2.setUint16(4, 20, true);
+      dv2.setUint16(6, 20, true);
+      dv2.setUint16(8, 0x0800, true);
+      dv2.setUint16(10, method, true);
+      dv2.setUint16(12, dosTime, true);
+      dv2.setUint16(14, dosDate, true);
+      dv2.setUint32(16, crc, true);
+      dv2.setUint32(20, comp.length, true);
+      dv2.setUint32(24, data.length, true);
+      dv2.setUint16(28, nameBytes.length, true);
+      dv2.setUint32(42, offset, true);
+      cd.set(nameBytes, 46);
+      central.push(cd);
+
+      offset += lh.length + comp.length;
+    }
+
+    var cdSize = 0;
+    for (var j = 0; j < central.length; j++) cdSize += central[j].length;
+    var eocd = new Uint8Array(22);
+    var dv3 = new DataView(eocd.buffer);
+    dv3.setUint32(0, 0x06054b50, true);
+    dv3.setUint16(8, central.length, true);
+    dv3.setUint16(10, central.length, true);
+    dv3.setUint32(12, cdSize, true);
+    dv3.setUint32(16, offset, true);
+
+    return new Blob(chunks.concat(central, [eocd]), { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+  }
+
+  /* ---------------- 图片：加载 / 栅格化 ---------------- */
+  function isSvg(name, blob) {
+    return /\.svg$/i.test(name) || (blob && blob.type === 'image/svg+xml');
+  }
+
+  function readImageSize(blob) {
+    return new Promise(function (res) {
+      var img = new Image();
+      var url = URL.createObjectURL(blob);
+      img.onload = function () { res({ w: img.naturalWidth || img.width, h: img.naturalHeight || img.height, url: url }); };
+      img.onerror = function () { res({ w: 0, h: 0, url: url }); };
+      img.src = url;
+    });
+  }
+
+  function svgIntrinsic(blob) {
+    return blob.text().then(function (text) {
+      var m = text.match(/<svg[^>]*>/i);
+      if (!m) return { w: 0, h: 0 };
+      var tag = m[0];
+      var w = /width="([\d.]+)/.exec(tag);
+      var h = /height="([\d.]+)/.exec(tag);
+      if (w && h) return { w: parseFloat(w[1]), h: parseFloat(h[1]) };
+      var vb = /viewBox="([-\d.\s]+)"/.exec(tag);
+      if (vb) {
+        var p = vb[1].trim().split(/\s+/).map(Number);
+        if (p.length === 4) return { w: p[2], h: p[3] };
+      }
+      return { w: 0, h: 0 };
+    });
+  }
+
+  /** SVG -> 高清 PNG（canvas 矢量渲染，6 倍） */
+  async function svgToPng(blob, cssW, cssH, scale) {
+    var url = URL.createObjectURL(blob);
+    try {
+      var img = await new Promise(function (res, rej) {
+        var i = new Image();
+        i.onload = function () { res(i); };
+        i.onerror = function () { rej(new Error('svg load fail')); };
+        i.src = url;
+      });
+      var w = cssW || img.naturalWidth || 40;
+      var h = cssH || img.naturalHeight || 20;
+      scale = scale || 6;
+      var cw = Math.max(8, Math.round(w * scale));
+      var ch = Math.max(8, Math.round(h * scale));
+      if (cw * ch > 4000000) { var k = Math.sqrt(4000000 / (cw * ch)); cw = Math.round(cw * k); ch = Math.round(ch * k); }
+      var c = document.createElement('canvas');
+      c.width = cw; c.height = ch;
+      var ctx = c.getContext('2d');
+      ctx.clearRect(0, 0, cw, ch);
+      ctx.drawImage(img, 0, 0, cw, ch);
+      var out = await new Promise(function (res) { c.toBlob(function (b) { res(b); }, 'image/png'); });
+      if (!out) throw new Error('svg raster fail');
+      return { blob: out, ext: 'png' };
+    } finally {
+      URL.revokeObjectURL(url);
+    }
+  }
+
+  async function shrinkRaster(blob, maxPx) {
+    var info = await readImageSize(blob);
+    if (!info.w || info.w <= maxPx) {
+      return { blob: blob, ext: mimeExt(blob.type), natW: info.w, natH: info.h };
+    }
+    var scale = maxPx / info.w;
+    var w = Math.round(info.w * scale), h = Math.round(info.h * scale);
+    var img = await new Promise(function (res) {
+      var i = new Image();
+      i.onload = function () { res(i); };
+      i.src = info.url;
+    });
+    var c = document.createElement('canvas');
+    c.width = w; c.height = h;
+    var ctx = c.getContext('2d');
+    ctx.fillStyle = '#fff';
+    // 检测是否有透明像素（缩略采样）
+    var small = document.createElement('canvas');
+    small.width = 48; small.height = 48;
+    var sctx = small.getContext('2d');
+    sctx.drawImage(img, 0, 0, 48, 48);
+    var hasAlpha = false;
+    try {
+      var d = sctx.getImageData(0, 0, 48, 48).data;
+      for (var i = 3; i < d.length; i += 4) { if (d[i] < 250) { hasAlpha = true; break; } }
+    } catch (e) { }
+    if (!hasAlpha) ctx.fillRect(0, 0, w, h);
+    ctx.drawImage(img, 0, 0, w, h);
+    var type = hasAlpha ? 'image/png' : 'image/jpeg';
+    var out = await new Promise(function (res) { c.toBlob(function (b) { res(b); }, type, 0.92); });
+    URL.revokeObjectURL(info.url);
+    return { blob: out || blob, ext: mimeExt(type), natW: w, natH: h };
+  }
+
+  function mimeExt(t) {
+    if (!t) return 'png';
+    if (/jpe?g/i.test(t)) return 'jpeg';
+    if (/gif/i.test(t)) return 'gif';
+    if (/svg/i.test(t)) return 'svg';
+    if (/webp/i.test(t)) return 'webp';
+    return 'png';
+  }
+
+  /* ---------------- HTML 解析 ---------------- */
+  function cleanText(s) {
+    return s.replace(/[\t\r\n]+/g, ' ').replace(/\u00a0/g, ' ');
+  }
+
+  function detectMathImg(el) {
+    return /\.svg($|\?)/i.test(el.getAttribute('src') || '');
+  }
+
+  function pxAttr(el, name) {
+    var v = el.getAttribute(name);
+    if (!v) return null;
+    var m = /([\d.]+)/.exec(v);
+    return m ? parseFloat(m[1]) : null;
+  }
+
+  /** 遍历题目内容，产出 block 列表 */
+  function Walker(ctx) {
+    this.ctx = ctx;
+    this.blocks = [];
+    this.cur = [];
+    this.keepWs = false;
+  }
+
+  Walker.prototype.flush = function (align) {
+    if (!this.cur.length) return;
+    var items = this.cur;
+    this.cur = [];
+    while (items.length && items[0].t === 'text' && !items[0].text.trim()) items.shift();
+    while (items.length && items[items.length - 1].t === 'text' && !items[items.length - 1].text.trim()) items.pop();
+    while (items.length && items[items.length - 1].t === 'br') items.pop();
+    if (!items.length) return;
+    this.blocks.push({ kind: 'para', items: items, align: align || null });
+  };
+
+  Walker.prototype.pushText = function (el, text, style) {
+    if (!text) return;
+    var last = this.cur[this.cur.length - 1];
+    if (last && last.t === 'text' && sameStyle(last, style)) {
+      last.text += text;
+      return;
+    }
+    this.cur.push({ t: 'text', text: text, b: style.b, i: style.i, u: style.u, va: style.va });
+  };
+
+  function sameStyle(a, b) {
+    return !!a.b === !!b.b && !!a.i === !!b.i && !!a.u === !!b.u && (a.va || '') === (b.va || '');
+  }
+
+  Walker.prototype.walk = function (node, style) {
+    style = style || {};
+    for (var i = 0; i < node.childNodes.length; i++) {
+      var ch = node.childNodes[i];
+      if (ch.nodeType === 3) {
+        var t = cleanText(ch.nodeValue);
+        if (!t) continue;
+        if (/^\s+$/.test(t)) {
+          // 折叠多余空白，但保留一个空格
+          var last = this.cur[this.cur.length - 1];
+          if (last && last.t === 'text' && / $/.test(last.text)) continue;
+          t = ' ';
+        }
+        this.pushText(ch, t, style);
+        continue;
+      }
+      if (ch.nodeType !== 1) continue;
+      var name = ch.tagName.toLowerCase();
+      if (name === 'script' || name === 'style' || name === 'noscript') continue;
+      if (ch.hasAttribute('hidden')) {
+        var cs = ch.getAttribute('style') || '';
+        if (/display\s*:\s*none/i.test(cs)) continue;
+      }
+      if (/display\s*:\s*none/i.test(ch.getAttribute('style') || '')) continue;
+
+      if (name === 'br') { this.cur.push({ t: 'br' }); continue; }
+
+      if (name === 'img') {
+        var src = ch.getAttribute('src') || '';
+        var key = this.ctx.resolveFile(src);
+        var w = pxAttr(ch, 'width'), h = pxAttr(ch, 'height');
+        if (key) {
+          this.cur.push({ t: 'img', key: key, w: w, h: h, math: detectMathImg(ch) });
+        }
+        continue;
+      }
+
+      if (name === 'p') {
+        this.flush();
+        var align = /center/i.test(ch.getAttribute('style') || '') ? 'center' : null;
+        this.walk(ch, style);
+        this.flush(align);
+        continue;
+      }
+
+      if (name === 'table') {
+        this.flush();
+        this.blocks.push(this.table(ch));
+        continue;
+      }
+
+      if (name === 'sub' || name === 'sup') {
+        this.walk(ch, mix(style, { va: name === 'sub' ? 'sub' : 'sup' }));
+        continue;
+      }
+      if (name === 'i' || name === 'em' || name === 'cite') {
+        this.walk(ch, mix(style, { i: true }));
+        continue;
+      }
+      if (name === 'b' || name === 'strong' || name === 'dot') {
+        this.walk(ch, mix(style, { b: true }));
+        continue;
+      }
+      if (name === 'u' || name === 'ins') {
+        this.walk(ch, mix(style, { u: true }));
+        continue;
+      }
+      if (name === 'bk') {
+        var size = parseInt(ch.getAttribute('size') || '0', 10);
+        var raw = (ch.textContent || '').trim();
+        var n = size > 0 ? size : Math.max(4, Math.min(50, raw.length || 8));
+        this.pushText(ch, new Array(n + 1).join('_'), style);
+        continue;
+      }
+      if (name === 'span' && ch.getAttribute('qml-space-size')) {
+        this.pushText(ch, '        ', style);
+        continue;
+      }
+      if (name === 'div') {
+        this.flush();
+        this.walk(ch, style);
+        this.flush();
+        continue;
+      }
+      this.walk(ch, style);
+    }
+  };
+
+  function mix(a, b) {
+    var o = {};
+    for (var k in a) o[k] = a[k];
+    for (var k2 in b) o[k2] = b[k2];
+    return o;
+  }
+
+  Walker.prototype.cellItems = function (cell) {
+    var sub = new Walker(this.ctx);
+    sub.walk(cell, {});
+    sub.flush();
+    if (!sub.blocks.length) return [];
+    if (sub.blocks.length === 1) return sub.blocks[0].items;
+    var items = [];
+    for (var i = 0; i < sub.blocks.length; i++) {
+      if (sub.blocks[i].kind === 'para') items = items.concat(sub.blocks[i].items);
+      if (i < sub.blocks.length - 1) items.push({ t: 'br' });
+    }
+    return items;
+  };
+
+  Walker.prototype.table = function (tbl) {
+    var rowsEl = tbl.querySelectorAll('tr');
+    var rows = [];
+    var maxCols = 1;
+    for (var i = 0; i < rowsEl.length; i++) {
+      var cellsEl = rowsEl[i].querySelectorAll('td,th');
+      var row = [];
+      for (var j = 0; j < cellsEl.length; j++) row.push(this.cellItems(cellsEl[j]));
+      maxCols = Math.max(maxCols, row.length);
+      rows.push(row);
+    }
+    var tname = tbl.getAttribute('name');
+    if (tname === 'optionsTable') {
+      var cols = parseInt(tbl.getAttribute('cols') || '', 10);
+      return { kind: 'options', cols: cols > 0 ? cols : maxCols, rows: rows };
+    }
+    // 数据表格：取首行单元格宽度
+    var widths = [];
+    if (rowsEl.length) {
+      var first = rowsEl[0].querySelectorAll('td,th');
+      for (var k = 0; k < first.length; k++) {
+        var m = /width\s*:\s*([\d.]+)/.exec(first[k].getAttribute('style') || '');
+        widths.push(m ? parseFloat(m[1]) : null);
+      }
+    }
+    var tw = null;
+    var mt = /width\s*:\s*([\d.]+)px/.exec(tbl.getAttribute('style') || '');
+    if (mt) tw = parseFloat(mt[1]);
+    return { kind: 'data', rows: rows, widths: widths, tw: tw, ncols: maxCols };
+  };
+
+  /* 解析整份试卷 */
+  function parsePaper(htmlText, options) {
+    var doc = new DOMParser().parseFromString(htmlText, 'text/html');
+    var body = doc.querySelector('.paper-body') || doc.body;
+    var fileNameMap = null;
+
+    var ctx = {
+      resolveFile: function (src) {
+        if (!src) return null;
+        var s = src.split('#')[0].split('?')[0].replace(/\\/g, '/');
+        var base = s.substring(s.lastIndexOf('/') + 1);
+        try { base = decodeURIComponent(base); } catch (e) { }
+        return base || null;
+      }
+    };
+
+    var titleEl = doc.querySelector('.paper-title .main-title') || doc.querySelector('.main-title') || doc.querySelector('.paper-title');
+    var title = titleEl ? (titleEl.textContent || '').trim() : '试卷';
+    var stdEl = doc.querySelector('.std-input');
+    var std = null;
+    if (stdEl && !stdEl.hasAttribute('hidden')) std = (stdEl.textContent || '').replace(/\s+/g, '').trim();
+
+    var model = { title: title, std: std, sections: [], stats: { questions: 0, figures: 0, mathImages: 0, types: [] } };
+    var gIndex = 0;
+
+    function pushQType(qt, partTitle) {
+      var head = qt.querySelector('.questypetitle');
+      var label = '';
+      if (head) {
+        var idx = head.querySelector('.questypeindex');
+        var nm = head.querySelector('.questypename');
+        label = (idx ? idx.textContent : '') + (nm ? nm.textContent : '');
+      }
+      var qs = qt.querySelectorAll('.tk-quest-item');
+      if (!qs.length) return;
+      var sec = { type: 'qtype', label: label.trim(), partTitle: partTitle || '', questions: [] };
+      for (var i = 0; i < qs.length; i++) {
+        var cnt = qs[i].querySelector('.exam-item__cnt');
+        if (!cnt) continue;
+        var w = new Walker(ctx);
+        w.walk(cnt, {});
+        w.flush();
+        // 去掉末尾换行
+        for (var b = 0; b < w.blocks.length; b++) {
+          if (w.blocks[b].kind !== 'para') continue;
+          var it = w.blocks[b].items;
+          while (it.length && it[it.length - 1].t === 'br') it.pop();
+        }
+        // 答案 / 解析
+        var ans = { answer: [], parse: [] };
+        if (options.includeAnswers) {
+          var an = qs[i].querySelector('.item.answer');
+          var pa = qs[i].querySelector('.item.parse');
+          [['answer', an], ['parse', pa]].forEach(function (pair) {
+            var el = pair[1];
+            if (!el) return;
+            var txt = (el.textContent || '').replace(/\s+/g, ' ').trim();
+            if (!txt) return;
+            var ww = new Walker(ctx);
+            ww.walk(el, {});
+            ww.flush();
+            ans[pair[0]] = ww.blocks;
+          });
+        }
+        sec.questions.push({ index: (++gIndex), blocks: w.blocks, answers: ans });
+        model.stats.questions++;
+        countMedia(w.blocks, model.stats);
+        countMedia(ans.answer.concat(ans.parse), model.stats);
+      }
+      model.stats.types.push({ label: sec.label, count: sec.questions.length });
+      model.sections.push(sec);
+    }
+
+    var qtypes = body.querySelectorAll('.ques-type');
+    if (qtypes.length) {
+      var parts = body.querySelectorAll('.paper-part');
+      if (parts.length) {
+        for (var p = 0; p < parts.length; p++) {
+          var pn = parts[p].querySelector('.part-name');
+          var partTitle = '';
+          var ph = parts[p].querySelector('.part-head');
+          if (pn && !(ph && ph.hasAttribute('hidden'))) partTitle = (pn.textContent || '').trim();
+          var inner = parts[p].querySelectorAll('.ques-type');
+          for (var q = 0; q < inner.length; q++) pushQType(inner[q], partTitle);
+        }
+      } else {
+        for (var t = 0; t < qtypes.length; t++) pushQType(qtypes[t], '');
+      }
+    } else {
+      // 退化：直接抓题块
+      var all = body.querySelectorAll('.tk-quest-item');
+      if (all.length) {
+        var sec2 = { type: 'qtype', label: '', partTitle: '', questions: [] };
+        for (var a = 0; a < all.length; a++) {
+          var c2 = all[a].querySelector('.exam-item__cnt');
+          if (!c2) continue;
+          var w2 = new Walker(ctx);
+          w2.walk(c2, {});
+          w2.flush();
+          sec2.questions.push({ index: (++gIndex), blocks: w2.blocks, answers: { answer: [], parse: [] } });
+          model.stats.questions++;
+          countMedia(w2.blocks, model.stats);
+        }
+        model.stats.types.push({ label: '', count: sec2.questions.length });
+        model.sections.push(sec2);
+      }
+    }
+    return model;
+  }
+
+  function countMedia(blocks, stats) {
+    if (!blocks) return;
+    for (var i = 0; i < blocks.length; i++) {
+      var b = blocks[i];
+      if (b.kind === 'para') {
+        for (var j = 0; j < b.items.length; j++) {
+          if (b.items[j].t === 'img') {
+            stats.figures++;
+            if (b.items[j].math) stats.mathImages++;
+          }
+        }
+      } else if (b.kind === 'options') {
+        for (var r = 0; r < b.rows.length; r++)
+          for (var c = 0; c < b.rows[r].length; c++)
+            countMedia([{ kind: 'para', items: b.rows[r][c] }], stats);
+      } else if (b.kind === 'data') {
+        for (var r2 = 0; r2 < b.rows.length; r2++)
+          for (var c2 = 0; c2 < b.rows[r2].length; c2++)
+            countMedia([{ kind: 'para', items: b.rows[r2][c2] }], stats);
+      }
+    }
+  }
+
+  global.P2D = {
+    DEFAULT_OPTIONS: DEFAULT_OPTIONS,
+    parsePaper: parsePaper,
+    esc: esc,
+    u8: u8,
+    makeZip: makeZip,
+    crc32: crc32,
+    deflateRaw: deflateRaw,
+    util: {
+      readImageSize: readImageSize,
+      svgToPng: svgToPng,
+      svgIntrinsic: svgIntrinsic,
+      shrinkRaster: shrinkRaster,
+      mimeExt: mimeExt,
+      isSvg: isSvg
+    }
+  };
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+/* ===== docx.js ===== */
+﻿/* ===================================================================
+ * Paper2Docx — DOCX 生成（OOXML）与打包
+ * =================================================================== */
+(function (global) {
+  'use strict';
+  var P2D = global.P2D;
+  var esc = P2D.esc;
+  var readImageSize = P2D.util.readImageSize;
+  var svgToPng = P2D.util.svgToPng;
+  var shrinkRaster = P2D.util.shrinkRaster;
+
+  var W_NS = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" ' +
+    'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" ' +
+    'xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" ' +
+    'xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" ' +
+    'xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"';
+
+  function ptTwips(pt) { return Math.round(pt * 20); }
+  function tw(cm) { return Math.round(cm * 567); }
+  function emu(cm) { return Math.round(cm * 360000); }
+
+  /* ---------- 图片准备 ---------- */
+  async function prepareImages(model, files, opt, warnings) {
+    var k = (opt.fontSize / 10.5) * opt.imgScale;     // 1 CSS px -> k pt
+    var descs = new Map();
+    function scan(blocks) {
+      if (!blocks) return;
+      blocks.forEach(function (b) {
+        if (!b) return;
+        if (b.kind === 'para') {
+          b.items.forEach(function (it) { if (it.t === 'img' && !descs.has(it.key)) descs.set(it.key, it); });
+        } else if (b.kind === 'options') {
+          b.rows.forEach(function (r) { r.forEach(function (items) { scan([{ kind: 'para', items: items }]); }); });
+        } else if (b.kind === 'data') {
+          b.rows.forEach(function (r) { r.forEach(function (items) { scan([{ kind: 'para', items: items }]); }); });
+        }
+      });
+    }
+    model.sections.forEach(function (sec) {
+      sec.questions.forEach(function (q) {
+        scan(q.blocks);
+        scan(q.answers && q.answers.answer);
+        scan(q.answers && q.answers.parse);
+      });
+    });
+
+    var media = [];
+    var map = new Map();
+    var missing = [];
+    var used = new Set();
+
+    for (var ent of descs) {
+      var key = ent[0], d = ent[1];
+      var file = files.get(key);
+      if (!file) {
+        var lower = key.toLowerCase();
+        for (var fk of files.keys()) {
+          if (fk.toLowerCase() === lower) { file = files.get(fk); break; }
+        }
+      }
+      if (!file) { missing.push(key); continue; }
+
+      var ext = 'png', bytesBlob = file, natW = 0, natH = 0;
+      try {
+        if (/\.svg$/i.test(key) || file.type === 'image/svg+xml') {
+          var intr = await svgIntrinsicSafe(file);
+          var cw = d.w || intr.w, chh = d.h || intr.h;
+          if (!cw || !chh) { cw = 40; chh = 20; }
+          var r = await svgToPng(file, cw, chh, 6);
+          bytesBlob = r.blob; ext = 'png'; natW = cw; natH = chh;
+        } else {
+          var info = await readImageSize(file);
+          natW = info.w; natH = info.h;
+          var shr = await shrinkRaster(file, 3000);
+          bytesBlob = shr.blob; ext = shr.ext;
+          if (shr.natW) { natW = shr.natW; natH = shr.natH; }
+          URL.revokeObjectURL(info.url);
+        }
+      } catch (e) {
+        warnings.push('图片处理失败：' + key + '（' + e.message + '）');
+        continue;
+      }
+
+      // 显示尺寸（CSS px）
+      var cssW = d.w, cssH = d.h;
+      if (!cssW || !cssH) {
+        if (/\.svg$/i.test(key)) { cssW = cssW || natW; cssH = cssH || natH; }
+        else { cssW = cssW || natW; cssH = cssH || natH; }
+      }
+      if (!cssH && cssW && natW) cssH = cssW * natH / natW;
+      if (!cssW && cssH && natH) cssW = cssH * natW / natH;
+
+      var wCm = cssW * 0.75 * k * 2.54 / 72;
+      var hCm = cssH * 0.75 * k * 2.54 / 72;
+      var buf = new Uint8Array(await bytesBlob.arrayBuffer());
+      var name = 'image' + (media.length + 1) + '.' + ext;
+      var rec = { key: key, name: name, data: buf, ext: ext, wCm: wCm, hCm: hCm, rId: 'rIdImg' + (media.length + 1) };
+      media.push(rec);
+      map.set(key, rec);
+    }
+    return { map: map, media: media, missing: missing };
+  }
+
+  function svgIntrinsicSafe(blob) {
+    return blob.text().then(function (text) {
+      var m = text.match(/<svg[^>]*>/i);
+      if (!m) return { w: 0, h: 0 };
+      var tag = m[0];
+      var w = /width="([\d.]+)/.exec(tag);
+      var h = /height="([\d.]+)/.exec(tag);
+      if (w && h) return { w: parseFloat(w[1]), h: parseFloat(h[1]) };
+      var vb = /viewBox="([-\d.\s]+)"/.exec(tag);
+      if (vb) {
+        var p = vb[1].trim().split(/\s+/).map(Number);
+        if (p.length === 4) return { w: p[2], h: p[3] };
+      }
+      return { w: 0, h: 0 };
+    }).catch(function () { return { w: 0, h: 0 }; });
+  }
+
+  /* ---------- OOXML 片段 ---------- */
+  function rPr(o) {
+    var s = '<w:rPr>';
+    var en = o.latinFont || 'Times New Roman', cn = o.bodyFont || '宋体';
+    s += '<w:rFonts w:ascii="' + esc(en) + '" w:hAnsi="' + esc(en) + '" w:eastAsia="' + esc(cn) + '" w:cs="' + esc(en) + '"/>';
+    if (o.b) s += '<w:b/><w:bCs/>';
+    if (o.i) s += '<w:i/><w:iCs/>';
+    var half = Math.round((o.size || 12) * 2);
+    s += '<w:sz w:val="' + half + '"/><w:szCs w:val="' + half + '"/>';
+    if (o.u) s += '<w:u w:val="single"/>';
+    if (o.va === 'sub') s += '<w:vertAlign w:val="subscript"/>';
+    else if (o.va === 'sup') s += '<w:vertAlign w:val="superscript"/>';
+    return s + '</w:rPr>';
+  }
+
+  function pPr(o) {
+    var s = '<w:pPr>';
+    if (o.keepNext) s += '<w:keepNext/>';
+    if (o.keepLines) s += '<w:keepLines/>';
+    s += '<w:widowControl/>';
+    var before = o.before || 0, after = o.after == null ? 0 : o.after;
+    s += '<w:spacing w:before="' + ptTwips(before) + '" w:after="' + ptTwips(after) + '"' +
+      ' w:line="' + Math.round((o.line || 1) * 240) + '" w:lineRule="auto"/>';
+    if (o.left) s += '<w:ind w:left="' + tw(o.left) + '"/>';
+    var jc = o.align === 'center' ? 'center' : (o.align === 'both' ? 'both' : 'left');
+    s += '<w:jc w:val="' + jc + '"/>';
+    return s + '</w:pPr>';
+  }
+
+  var imgSeq = 1;
+  function imgXml(rec, wCm, hCm) {
+    var cx = emu(wCm), cy = emu(hCm);
+    var id = imgSeq++;
+    return '<w:r><w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0">' +
+      '<wp:extent cx="' + cx + '" cy="' + cy + '"/>' +
+      '<wp:effectExtent l="0" t="0" r="0" b="0"/>' +
+      '<wp:docPr id="' + id + '" name="Picture' + id + '"/>' +
+      '<wp:cNvGraphicFramePr><a:graphicFrameLocks xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" noChangeAspect="1"/></wp:cNvGraphicFramePr>' +
+      '<a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">' +
+      '<a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture">' +
+      '<pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture">' +
+      '<pic:nvPicPr><pic:cNvPr id="' + id + '" name="Picture' + id + '"/><pic:cNvPicPr/></pic:nvPicPr>' +
+      '<pic:blipFill><a:blip r:embed="' + rec.rId + '"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill>' +
+      '<pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="' + cx + '" cy="' + cy + '"/></a:xfrm>' +
+      '<a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr>' +
+      '</pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r>';
+  }
+
+  /* ---------- 文档构建 ---------- */
+  async function buildDocx(htmlText, files, optIn, onProgress) {
+    var opt = Object.assign({}, P2D.DEFAULT_OPTIONS, optIn || {});
+    var warnings = [];
+    var progress = onProgress || function () { };
+
+    progress('解析网页结构…');
+    var model = P2D.parsePaper(htmlText, opt);
+    if (!model.stats.questions) {
+      throw new Error('没有识别到题目。请确认上传的是组卷网「试卷预览/组卷中心」页面保存的 HTML。');
+    }
+
+    progress('处理图片（' + model.stats.figures + ' 处）…');
+    var prep = await prepareImages(model, files, opt, warnings);
+    if (prep.missing.length) {
+      warnings.push('缺少 ' + prep.missing.length + ' 个图片文件：' + prep.missing.slice(0, 8).join('、') + (prep.missing.length > 8 ? ' …' : ''));
+    }
+
+    var textW = 21 - opt.margin * 2;
+    var maxImgW = textW - 0.3;
+    var body = [];
+    var lastIsTable = false;
+    function pushP(xml) { body.push(xml); lastIsTable = false; }
+    function pushT(xml) {
+      if (lastIsTable) body.push('<w:p>' + pPr({ before: 0, after: 0, line: 1.0 }) + '</w:p>');
+      body.push(xml); lastIsTable = true;
+    }
+
+    function resolveItems(items, maxW) {
+      var out = [];
+      for (var i = 0; i < items.length; i++) {
+        var it = items[i];
+        if (it.t === 'img') {
+          var rec = prep.map.get(it.key);
+          if (!rec) continue;
+          var w = rec.wCm, h = rec.hCm;
+          var lim = maxW || maxImgW;
+          if (w > lim) { h = h * lim / w; w = lim; }
+          out.push({ t: 'img', rec: rec, w: w, h: h });
+        } else out.push(it);
+      }
+      return out;
+    }
+
+    function itemsXml(items, o) {
+      var s = '';
+      var buf = '';
+      function flush() {
+        if (!buf) return;
+        s += '<w:r>' + rPr(o) + '<w:t xml:space="preserve">' + esc(buf) + '</w:t></w:r>';
+        buf = '';
+      }
+      for (var i = 0; i < items.length; i++) {
+        var it = items[i];
+        if (it.t === 'text') {
+          if (it.b || it.i || it.u || it.va) {
+            flush();
+            s += '<w:r>' + rPr(Object.assign({}, o, { b: it.b, i: it.i, u: it.u, va: it.va })) +
+              '<w:t xml:space="preserve">' + esc(it.text) + '</w:t></w:r>';
+          } else buf += it.text;
+        } else if (it.t === 'br') {
+          flush(); s += '<w:r>' + rPr(o) + '<w:br/></w:r>';
+        } else if (it.t === 'img') {
+          flush(); s += imgXml(it.rec, it.w, it.h);
+        }
+      }
+      flush();
+      return s;
+    }
+
+    function paraXml(opts, items, o) {
+      return '<w:p>' + pPr(opts) + itemsXml(items, o) + '</w:p>';
+    }
+
+    function hasImg(items) { return items.some(function (x) { return x.t === 'img'; }); }
+    function onlyImg(items) {
+      var rest = items.filter(function (x) { return !(x.t === 'text' && !x.text.trim()) && x.t !== 'br'; });
+      return rest.length > 0 && rest.every(function (x) { return x.t === 'img'; });
+    }
+
+    function tableXml(rows, cols, widthsCm, opts) {
+      var total = widthsCm.reduce(function (a, b) { return a + b; }, 0);
+      var s = '<w:tbl><w:tblPr>';
+      s += '<w:tblW w:w="' + tw(total) + '" w:type="dxa"/>';
+      s += '<w:jc w:val="' + (opts.center ? 'center' : 'left') + '"/>';
+      if (opts.border) {
+        s += '<w:tblBorders>';
+        ['top', 'left', 'bottom', 'right', 'insideH', 'insideV'].forEach(function (sd) {
+          s += '<w:' + sd + ' w:val="single" w:sz="6" w:space="0" w:color="000000"/>';
+        });
+        s += '</w:tblBorders>';
+      } else {
+        s += '<w:tblBorders>' + ['top', 'left', 'bottom', 'right', 'insideH', 'insideV'].map(function (sd) {
+          return '<w:' + sd + ' w:val="none" w:sz="0" w:space="0" w:color="auto"/>';
+        }).join('') + '</w:tblBorders>';
+      }
+      s += '<w:tblLayout w:type="fixed"/>';
+      s += '<w:tblCellMar>' + ['top', 'left', 'bottom', 'right'].map(function (sd) {
+        return '<w:' + sd + ' w:w="' + (opts.border ? 57 : 0) + '" w:type="dxa"/>';
+      }).join('') + '</w:tblCellMar>';
+      s += '</w:tblPr><w:tblGrid>';
+      widthsCm.forEach(function (w) { s += '<w:gridCol w:w="' + tw(w) + '"/>'; });
+      s += '</w:tblGrid>';
+
+      for (var r = 0; r < rows.length; r++) {
+        s += '<w:tr><w:trPr><w:cantSplit/></w:trPr>';
+        for (var c = 0; c < cols; c++) {
+          var cellW = widthsCm[c] || (total / cols);
+          s += '<w:tc><w:tcPr><w:tcW w:w="' + tw(cellW) + '" w:type="dxa"/>' +
+            '<w:vAlign w:val="' + (opts.vAlign || 'center') + '"/></w:tcPr>';
+          s += opts.cellXml(r, c, cellW);
+          s += '</w:tc>';
+        }
+        s += '</w:tr>';
+      }
+      return s + '</w:tbl>';
+    }
+
+    /* 题头 */
+    var titleSize = Math.max(16, opt.fontSize + 6);
+    pushP(paraXml({ align: 'center', before: 0, after: 10, line: 1.0 },
+      [{ t: 'text', text: model.title || '试卷' }],
+      { size: titleSize, b: true, bodyFont: opt.titleFont, latinFont: opt.titleFont }));
+    if (model.std) {
+      pushP(paraXml({ align: 'center', before: 0, after: 10, line: 1.0 },
+        [{ t: 'text', text: model.std }], { size: Math.max(10, opt.fontSize - 1.5) }));
+    }
+
+    var lastPart = '';
+    for (var si = 0; si < model.sections.length; si++) {
+      var sec = model.sections[si];
+      if (sec.partTitle && sec.partTitle !== lastPart) {
+        lastPart = sec.partTitle;
+        pushP(paraXml({ align: 'center', before: 12, after: 4, line: 1.0 },
+          [{ t: 'text', text: sec.partTitle }],
+          { size: opt.fontSize + 2, b: true, bodyFont: opt.titleFont, latinFont: opt.titleFont }));
+      }
+      if (sec.label) {
+        pushP(paraXml({ align: null, before: 12, after: 4, line: 1.0, keepNext: true },
+          [{ t: 'text', text: sec.label }],
+          { size: opt.fontSize + 2, b: true, bodyFont: opt.titleFont, latinFont: opt.titleFont }));
+      }
+
+      for (var qi = 0; qi < sec.questions.length; qi++) {
+        var q = sec.questions[qi];
+        var blocks = q.blocks;
+        // 若首块没有题号，补一个
+        if (blocks.length && blocks[0].kind === 'para' && blocks[0].items.length) {
+          var firstTxt = blocks[0].items[0];
+          if (firstTxt.t === 'text' && !/^\s*\d/.test(firstTxt.text)) {
+            blocks[0].items.unshift({ t: 'text', text: (q.index) + '．' });
+          }
+        }
+        for (var bi = 0; bi < blocks.length; bi++) {
+          var b = blocks[bi];
+          var nxt = blocks[bi + 1];
+          var nxtImg = nxt && nxt.kind === 'para' && onlyImg(resolveItems(nxt.items));
+          var nxtTbl = nxt && (nxt.kind === 'options' || nxt.kind === 'data');
+          var o = { size: opt.fontSize };
+          if (b.kind === 'para') {
+            var items = resolveItems(b.items);
+            var isImg = onlyImg(items);
+            var opts2 = {
+              align: isImg ? 'center' : (b.align === 'center' ? 'center' : null),
+              before: bi === 0 ? opt.questionGap : (isImg ? 1 : 0),
+              after: nxtTbl ? 4 : 2,
+              line: opt.lineSpacing,
+              keepNext: (bi === 0) || (opt.keepImageWithText && (nxtImg || nxtTbl)),
+              keepLines: isImg && opt.keepImageWithText
+            };
+            pushP(paraXml(opts2, items, o));
+          } else if (b.kind === 'options') {
+            pushT(optionsXml(b, resolveItems, tableXml, opt, textW, bi === 0, o));
+          } else if (b.kind === 'data') {
+            pushT(dataXml(b, resolveItems, tableXml, opt, textW, o));
+          }
+        }
+
+        // 答案 / 解析
+        if (opt.includeAnswers) {
+          var ansBlocks = (q.answers && q.answers.answer) || [];
+          var parseBlocks = (q.answers && q.answers.parse) || [];
+          if (ansBlocks.length) pushP(ansXml('【答案】', ansBlocks, resolveItems, paraXml, opt, maxImgW));
+          if (parseBlocks.length) pushP(ansXml('【解析】', parseBlocks, resolveItems, paraXml, opt, maxImgW));
+        }
+      }
+    }
+
+    function optionsXml(b, resolveItems, tableXml, opt, textW, first, o) {
+      var cols = opt.autoOptionColumns ? b.cols : 1;
+      var ncol = 1;
+      b.rows.forEach(function (r) { ncol = Math.max(ncol, r.length); });
+      var out = [];
+      if (cols <= 1) {
+        for (var r = 0; r < b.rows.length; r++) {
+          for (var c = 0; c < b.rows[r].length; c++) {
+            var items = resolveItems(b.rows[r][c], maxImgW);
+            out.push(paraXml({
+              before: (r === 0 && c === 0 && first) ? 2 : 0, after: 1, line: opt.lineSpacing, left: 0.35,
+              keepNext: false
+            }, items, o));
+          }
+        }
+        return out.join('');
+      }
+      var n = Math.min(cols, ncol);
+      var cw = textW / n;
+      var widths = new Array(n).fill(cw);
+      var cellXml = function (r, c, cellW) {
+        var items = resolveItems(b.rows[r] && b.rows[r][c] ? b.rows[r][c] : [], cellW - 0.35);
+        var hasI = hasImg(items);
+        if (hasI) {
+          // 题号与图分两行居中
+          var label = '', rest = items;
+          for (var i = 0; i < items.length; i++) {
+            var it = items[i];
+            if (it.t === 'text') {
+              var t = it.text.trim();
+              if (/^[A-D][．.、]?$/.test(t) || /^[A-D][．.、]/.test(t)) { label = t; rest = items.slice(i + 1); break; }
+            } else break;
+          }
+          var s = '<w:p>' + pPr({ align: 'center', before: 0, after: 0, line: 1.0 }) +
+            (label ? '<w:r>' + rPr(o) + '<w:t xml:space="preserve">' + esc(label) + '</w:t></w:r>' : '') + '</w:p>';
+          s += '<w:p>' + pPr({ align: 'center', before: 0, after: 0, line: 1.0 }) + itemsXml(rest, o) + '</w:p>';
+          return s;
+        }
+        return '<w:p>' + pPr({ align: 'left', before: 0, after: 0, line: opt.lineSpacing }) + itemsXml(items, o) + '</w:p>';
+      };
+      return tableXml(b.rows, n, widths, { border: false, center: false, vAlign: 'top', cellXml: cellXml });
+    }
+
+    function dataXml(b, resolveItems, tableXml, opt, textW, o) {
+      var ncols = 1;
+      b.rows.forEach(function (r) { ncols = Math.max(ncols, r.length); });
+      var nat = (b.tw || 400) * 0.75 * (opt.fontSize / 10.5) * opt.imgScale * 2.54 / 72;
+      var tblW = Math.min(textW, nat);
+      var widths = [];
+      var known = b.widths.filter(function (x) { return x; });
+      var sum = known.reduce(function (a, x) { return a + x; }, 0) || 1;
+      for (var i = 0; i < ncols; i++) {
+        var v = b.widths[i];
+        widths.push(((v || sum / ncols) / sum) * tblW);
+      }
+      var cellXml = function (r, c, cellW) {
+        var items = resolveItems(b.rows[r] && b.rows[r][c] ? b.rows[r][c] : [], Math.max(0.5, cellW - 0.3));
+        return '<w:p>' + pPr({ align: 'center', before: 1, after: 1, line: 1.0 }) + itemsXml(items, o) + '</w:p>';
+      };
+      return tableXml(b.rows, ncols, widths, { border: true, center: true, vAlign: 'center', cellXml: cellXml });
+    }
+
+    function ansXml(prefix, blocks, resolveItems, paraXml, opt, maxW) {
+      var s = '';
+      var o = { size: opt.fontSize - 1 };
+      for (var i = 0; i < blocks.length; i++) {
+        var bl = blocks[i];
+        if (bl.kind !== 'para') continue;
+        var items = resolveItems(bl.items, maxW);
+        if (i === 0) items.unshift({ t: 'text', text: prefix });
+        s += paraXml({ before: 0, after: 0, line: opt.lineSpacing, left: 0.35 }, items, o);
+      }
+      return s;
+    }
+
+    progress('生成文档…');
+    var sectPr = '<w:sectPr><w:footerReference w:type="default" r:id="rIdFtr"/>' +
+      '<w:pgSz w:w="11906" w:h="16838"/>' +
+      '<w:pgMar w:top="' + tw(opt.margin) + '" w:right="' + tw(opt.margin) + '" w:bottom="' + tw(opt.margin - 0.2) +
+      '" w:left="' + tw(opt.margin) + '" w:header="' + tw(1.2) + '" w:footer="' + tw(1.0) + '" w:gutter="0"/>' +
+      '<w:cols w:space="425"/></w:sectPr>';
+
+    var docXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
+      '<w:document ' + W_NS + '><w:body>' + body.join('') + sectPr + '</w:body></w:document>';
+
+    var stylesXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
+      '<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">' +
+      '<w:docDefaults><w:rPrDefault><w:rPr>' +
+      '<w:rFonts w:ascii="' + esc(opt.latinFont) + '" w:hAnsi="' + esc(opt.latinFont) + '" w:eastAsia="' + esc(opt.bodyFont) + '" w:cs="' + esc(opt.latinFont) + '"/>' +
+      '<w:sz w:val="' + Math.round(opt.fontSize * 2) + '"/><w:szCs w:val="' + Math.round(opt.fontSize * 2) + '"/></w:rPr></w:rPrDefault>' +
+      '<w:pPrDefault><w:pPr><w:spacing w:line="' + Math.round(opt.lineSpacing * 240) + '" w:lineRule="auto"/></w:pPr></w:pPrDefault></w:docDefaults>' +
+      '<w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/><w:qFormat/></w:style>' +
+      '</w:styles>';
+
+    var settingsXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
+      '<w:settings xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">' +
+      '<w:zoom w:percent="100"/><w:defaultTabStop w:val="420"/><w:characterSpacingControl w:val="compressPunctuation"/>' +
+      '<w:compat><w:useFELayout/></w:compat></w:settings>';
+
+    var footerXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
+      '<w:ftr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" ' +
+      'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><w:p><w:pPr><w:jc w:val="center"/></w:pPr>' +
+      '<w:r><w:rPr><w:sz w:val="18"/></w:rPr><w:t xml:space="preserve">第 </w:t></w:r>' +
+      '<w:fldSimple w:instr=" PAGE "><w:r><w:rPr><w:sz w:val="18"/></w:rPr><w:t>1</w:t></w:r></w:fldSimple>' +
+      '<w:r><w:rPr><w:sz w:val="18"/></w:rPr><w:t xml:space="preserve"> 页 / 共 </w:t></w:r>' +
+      '<w:fldSimple w:instr=" NUMPAGES "><w:r><w:rPr><w:sz w:val="18"/></w:rPr><w:t>1</w:t></w:r></w:fldSimple>' +
+      '<w:r><w:rPr><w:sz w:val="18"/></w:rPr><w:t xml:space="preserve"> 页</w:t></w:r></w:p></w:ftr>';
+
+    var mediaList = prep.media;
+    var ct = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
+      '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">' +
+      '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>' +
+      '<Default Extension="xml" ContentType="application/xml"/>';
+    var exts = {};
+    mediaList.forEach(function (m) { exts[m.ext] = true; });
+    Object.keys(exts).forEach(function (e) {
+      var ctType = e === 'jpeg' || e === 'jpg' ? 'image/jpeg' : ('image/' + (e === 'svg' ? 'svg+xml' : e));
+      ct += '<Default Extension="' + e + '" ContentType="' + ctType + '"/>';
+    });
+    ct += '<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>' +
+      '<Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>' +
+      '<Override PartName="/word/settings.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.settings+xml"/>' +
+      '<Override PartName="/word/footer1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.footer+xml"/>' +
+      '<Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>' +
+      '<Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/>' +
+      '</Types>';
+
+    var rootRels = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
+      '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+      '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>' +
+      '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/>' +
+      '<Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties" Target="docProps/app.xml"/>' +
+      '</Relationships>';
+
+    var docRels = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
+      '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+      '<Relationship Id="rIdStyles" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>' +
+      '<Relationship Id="rIdSettings" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/settings" Target="settings.xml"/>' +
+      '<Relationship Id="rIdFtr" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/footer" Target="footer1.xml"/>';
+    mediaList.forEach(function (m) {
+      docRels += '<Relationship Id="' + m.rId + '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/' + m.name + '"/>';
+    });
+    docRels += '</Relationships>';
+
+    var now = new Date().toISOString().replace(/\.\d+Z$/, 'Z');
+    var coreXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
+      '<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" ' +
+      'xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" ' +
+      'xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">' +
+      '<dc:title>' + esc(model.title || '试卷') + '</dc:title><dc:creator>组卷转Word工具</dc:creator>' +
+      '<cp:lastModifiedBy>组卷转Word工具</cp:lastModifiedBy>' +
+      '<dcterms:created xsi:type="dcterms:W3CDTF">' + now + '</dcterms:created>' +
+      '<dcterms:modified xsi:type="dcterms:W3CDTF">' + now + '</dcterms:modified>' +
+      '</cp:coreProperties>';
+
+    var appXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
+      '<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties" ' +
+      'xmlns:vt="http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes">' +
+      '<Application>组卷转Word工具</Application></Properties>';
+
+    progress('打包 .docx…');
+    var entries = [
+      { name: '[Content_Types].xml', data: P2D.u8(ct) },
+      { name: '_rels/.rels', data: P2D.u8(rootRels) },
+      { name: 'docProps/core.xml', data: P2D.u8(coreXml) },
+      { name: 'docProps/app.xml', data: P2D.u8(appXml) },
+      { name: 'word/document.xml', data: P2D.u8(docXml) },
+      { name: 'word/styles.xml', data: P2D.u8(stylesXml) },
+      { name: 'word/settings.xml', data: P2D.u8(settingsXml) },
+      { name: 'word/footer1.xml', data: P2D.u8(footerXml) },
+      { name: 'word/_rels/document.xml.rels', data: P2D.u8(docRels) }
+    ];
+    mediaList.forEach(function (m) {
+      entries.push({ name: 'word/media/' + m.name, data: m.data, store: true });
+    });
+
+    var blob = await P2D.makeZip(entries);
+    return {
+      blob: blob,
+      stats: model.stats,
+      title: model.title,
+      warnings: warnings,
+      missing: prep.missing,
+      images: mediaList.length
+    };
+  }
+
+  P2D.buildDocx = buildDocx;
+
+})(typeof window !== 'undefined' ? window : globalThis);
+
+
+</script>
+<script>
+/* ===== ui.js ===== */
+/* ===================================================================
+ * Paper2Docx UI
+ * =================================================================== */
+(function () {
+  'use strict';
+
+  var $ = function (id) { return document.getElementById(id); };
+  var state = { htmlFile: null, htmlText: '', htmlName: '', files: new Map(), allFiles: [], model: null };
+
+  var $htmlInput = $('htmlInput'), $dirInput = $('dirInput');
+  var $htmlZone = $('htmlZone'), $dirZone = $('dirZone');
+  var $htmlInfo = $('htmlInfo'), $dirInfo = $('dirInfo');
+  var $btn = $('convertBtn');
+  var $status = $('status');
+  var $result = $('result');
+  var $preview = $('preview');
+  var $dl = $('downloadLink');
+
+  var IMG_RE = /\.(png|jpe?g|gif|svg|webp|bmp)$/i;
+  var HTML_RE = /\.html?$/i;
+
+  /* ---------- 提示 ---------- */
+  function setStatus(msg, type) {
+    if (!msg) { $status.className = 'status'; $status.textContent = ''; return; }
+    $status.className = 'status ' + (type || 'info');
+    $status.textContent = msg;
+  }
+
+  /* ---------- 文件收集 ---------- */
+  function addFiles(fileList) {
+    var imgs = 0, htmls = 0;
+    for (var i = 0; i < fileList.length; i++) {
+      var f = fileList[i];
+      var name = f.name;
+      if (HTML_RE.test(name)) {
+        htmls++;
+        if (!state.htmlFile || f.size > state.htmlFile.size) state.htmlFile = f;
+      } else if (IMG_RE.test(name)) {
+        imgs++;
+        state.files.set(name, f);
+        state.allFiles.push(f);
+      } else {
+        state.allFiles.push(f);
+      }
+    }
+    return { imgs: imgs, htmls: htmls };
+  }
+
+  function readEntries(dirReader) {
+    return new Promise(function (resolve) {
+      var out = [];
+      function step() {
+        dirReader.readEntries(function (entries) {
+          if (!entries.length) return resolve(out);
+          out = out.concat(Array.prototype.slice.call(entries));
+          step();
+        }, function () { resolve(out); });
+      }
+      step();
+    });
+  }
+
+  function entryFile(entry) {
+    return new Promise(function (res) {
+      entry.file(function (f) { res(f); }, function () { res(null); });
+    });
+  }
+
+  async function walkEntry(entry, acc) {
+    if (entry.isFile) {
+      var f = await entryFile(entry);
+      if (f) acc.push(f);
+    } else if (entry.isDirectory) {
+      var reader = entry.createReader();
+      var entries = await readEntries(reader);
+      for (var i = 0; i < entries.length; i++) await walkEntry(entries[i], acc);
+    }
+  }
+
+  async function handleDrop(e) {
+    e.preventDefault();
+    $htmlZone.classList.remove('active'); $dirZone.classList.remove('active');
+    var dt = e.dataTransfer;
+    var acc = [];
+    if (dt.items && dt.items.length && dt.items[0].webkitGetAsEntry) {
+      var entries = [];
+      for (var i = 0; i < dt.items.length; i++) {
+        var en = dt.items[i].webkitGetAsEntry();
+        if (en) entries.push(en);
+      }
+      for (var j = 0; j < entries.length; j++) await walkEntry(entries[j], acc);
+    } else {
+      acc = Array.prototype.slice.call(dt.files);
+    }
+    setStatus('正在读取拖入的文件…');
+    addFiles(acc);
+    await afterFiles('已拖入 ' + acc.length + ' 个文件');
+  }
+
+  async function afterFiles(msg) {
+    if (state.htmlFile) {
+      state.htmlText = await state.htmlFile.text();
+      state.htmlName = state.htmlFile.name;
+      $htmlInfo.textContent = state.htmlFile.name + '（' + (state.htmlFile.size / 1024).toFixed(0) + ' KB）';
+      $htmlInfo.className = 'file-info ok';
+    }
+    var imgCount = 0;
+    state.files.forEach(function () { imgCount++; });
+    $dirInfo.textContent = imgCount ? ('已载入 ' + imgCount + ' 个图片/资源文件') : '尚未选择素材文件夹';
+    $dirInfo.className = 'file-info' + (imgCount ? ' ok' : '');
+
+    refreshBtn();
+    if (state.htmlText) await doPreview(msg);
+    else if (msg) setStatus(msg + '。还需要选择试卷 HTML 文件。', 'info');
+  }
+
+  function refreshBtn() {
+    $btn.disabled = !(state.htmlText && state.files.size);
+  }
+
+  /* ---------- 解析预览 ---------- */
+  async function doPreview(msg) {
+    try {
+      var model = P2D.parsePaper(state.htmlText, readOptions());
+      state.model = model;
+      var st = model.stats;
+      var miss = 0, missList = [];
+      var seen = new Set();
+      (function scan(blocks) {
+        if (!blocks) return;
+        blocks.forEach(function (b) {
+          if (!b) return;
+          if (b.kind === 'para') b.items.forEach(function (it) {
+            if (it.t !== 'img' || seen.has(it.key)) return;
+            seen.add(it.key);
+            if (!state.files.get(it.key)) { miss++; missList.push(it.key); }
+          });
+          else if (b.kind === 'options' || b.kind === 'data') b.rows.forEach(function (r) {
+            r.forEach(function (items) { scan([{ kind: 'para', items: items }]); });
+          });
+        });
+      })(flattenBlocks(model));
+
+      var types = st.types.filter(function (t) { return t.count; })
+        .map(function (t) { return (t.label || '未命名题型') + ' ' + t.count + ' 题'; }).join('、');
+
+      $preview.innerHTML = '';
+      $preview.className = 'preview show';
+      var lines = [
+        ['试卷标题', model.title || '（未识别）'],
+        ['题目数量', st.questions + ' 题（' + st.types.length + ' 个题型）'],
+        ['题型分布', types || '—'],
+        ['插图数量', st.figures + ' 处（其中公式小图 ' + st.mathImages + ' 处）'],
+        ['图片资源', miss ? ('<b class="warn">缺 ' + miss + ' 个</b>：' + missList.slice(0, 6).join('、')) : '全部匹配 ✓']
+      ];
+      lines.forEach(function (kv) {
+        var row = document.createElement('div');
+        row.className = 'pv-row';
+        row.innerHTML = '<span class="pv-k">' + kv[0] + '</span><span class="pv-v">' + kv[1] + '</span>';
+        $preview.appendChild(row);
+      });
+      setStatus(msg || '识别完成，可以生成 Word 了。', 'success');
+    } catch (e) {
+      setStatus('解析失败：' + e.message, 'error');
+    }
+  }
+
+  function flattenBlocks(model) {
+    var out = [];
+    model.sections.forEach(function (s) {
+      s.questions.forEach(function (q) {
+        out = out.concat(q.blocks);
+        if (q.answers) {
+          out = out.concat(q.answers.answer || []);
+          out = out.concat(q.answers.parse || []);
+        }
+      });
+    });
+    return out;
+  }
+
+  /* ---------- 参数 ---------- */
+  function readOptions() {
+    return {
+      fontSize: parseFloat($('optFont').value),
+      lineSpacing: parseFloat($('optLine').value),
+      imgScale: parseFloat($('optImg').value),
+      margin: parseFloat($('optMargin').value),
+      includeAnswers: $('optAns').value === '1',
+      questionGap: parseFloat($('optGap').value)
+    };
+  }
+
+  /* ---------- 生成 ---------- */
+  function safeName(s) {
+    return (s || '试卷').replace(/[\\/:*?"<>|\r\n\t]/g, '').trim().slice(0, 60) || '试卷';
+  }
+
+  function download(blob, name) {
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url; a.download = name;
+    document.body.appendChild(a); a.click();
+    setTimeout(function () { URL.revokeObjectURL(url); a.remove(); }, 4000);
+  }
+
+  async function convert() {
+    if ($btn.disabled) return;
+    $btn.disabled = true;
+    $result.className = 'result';
+    setStatus('开始处理…');
+    try {
+      var t0 = performance.now();
+      var res = await P2D.buildDocx(state.htmlText, state.files, readOptions(), function (m) {
+        setStatus(m);
+      });
+      var name = safeName(res.title) + '.docx';
+      download(res.blob, name);
+      var secs = ((performance.now() - t0) / 1000).toFixed(1);
+      $result.className = 'result show';
+      $result.innerHTML =
+        '<div class="ok-title">✓ 已生成：' + name + '</div>' +
+        '<div class="ok-meta">' + res.stats.questions + ' 题 · ' + res.stats.figures + ' 处插图 · ' +
+        (res.blob.size / 1048576).toFixed(1) + ' MB · 用时 ' + secs + ' 秒</div>' +
+        (res.warnings.length ? '<div class="warn-box">' + res.warnings.map(function (w) { return '· ' + w; }).join('<br>') + '</div>' : '') +
+        '<div class="hint">如果浏览器没有自动下载，请检查下载拦截提示。</div>';
+      setStatus('完成。', 'success');
+    } catch (e) {
+      setStatus('生成失败：' + e.message, 'error');
+      console.error(e);
+    } finally {
+      $btn.disabled = false;
+    }
+  }
+
+  /* ---------- 事件绑定 ---------- */
+  $htmlZone.addEventListener('click', function () { $htmlInput.click(); });
+  $dirZone.addEventListener('click', function () { $dirInput.click(); });
+
+  $htmlInput.addEventListener('change', function () {
+    var fs = $htmlInput.files;
+    if (!fs.length) return;
+    state.htmlFile = fs[0];
+    afterFiles();
+  });
+
+  $dirInput.addEventListener('change', function () {
+    var fs = $dirInput.files;
+    if (!fs.length) return;
+    addFiles(fs);
+    afterFiles();
+  });
+
+  ['dragenter', 'dragover'].forEach(function (ev) {
+    document.addEventListener(ev, function (e) {
+      e.preventDefault();
+      document.body.classList.add('dragging');
+    });
+  });
+  ['dragleave', 'drop'].forEach(function (ev) {
+    document.addEventListener(ev, function (e) {
+      if (ev === 'dragleave' && e.relatedTarget) return;
+      document.body.classList.remove('dragging');
+    });
+  });
+  document.addEventListener('drop', handleDrop);
+
+  $btn.addEventListener('click', convert);
+
+  ['optFont', 'optLine', 'optImg', 'optMargin', 'optAns', 'optGap'].forEach(function (id) {
+    $(id).addEventListener('change', function () {
+      if (state.htmlText) doPreview();
+    });
+  });
+
+  // 默认展开说明
+  var tips = $('tips');
+  if (tips) tips.open = false;
+})();
+
+</script>
+</body>
+</html>

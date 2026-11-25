@@ -1,4 +1,4 @@
-﻿/* ===================================================================
+/* ===================================================================
  * Paper2Docx — DOCX 生成（OOXML）与打包
  * =================================================================== */
 (function (global) {
@@ -184,8 +184,20 @@
       warnings.push('缺少 ' + prep.missing.length + ' 个图片文件：' + prep.missing.slice(0, 8).join('、') + (prep.missing.length > 8 ? ' …' : ''));
     }
 
-    var textW = 21 - opt.margin * 2;
-    var maxImgW = textW - 0.3;
+    /* ---------- 版面：纸张 + 分栏 ---------- */
+    var LAYOUTS = {
+      'a4-1': { w: 21.0, h: 29.7, cols: 1 },   // A4 单栏
+      'a4-2': { w: 21.0, h: 29.7, cols: 2 },   // A4 双栏
+      'a3-2': { w: 42.0, h: 29.7, cols: 2 },   // A3 横向双栏（考试卷常用）
+      '8k-2': { w: 42.0, h: 28.5, cols: 2 },   // 8 开横向双栏
+      '16k-1': { w: 19.5, h: 27.0, cols: 1 }   // 16 开单栏
+    };
+    var lay = LAYOUTS[opt.layout] || LAYOUTS['a4-1'];
+    var colGap = 0.65;
+    var textW = lay.w - opt.margin * 2;
+    var colW = (textW - (lay.cols - 1) * colGap) / lay.cols;
+    var maxImgW = colW - 0.3;
+
     var body = [];
     var lastIsTable = false;
     function pushP(xml) { body.push(xml); lastIsTable = false; }
@@ -286,11 +298,12 @@
 
     /* 题头 */
     var titleSize = Math.max(16, opt.fontSize + 6);
-    pushP(paraXml({ align: 'center', before: 0, after: 10, line: 1.0 },
+    var headXml = [];
+    headXml.push(paraXml({ align: 'center', before: 0, after: 10, line: 1.0 },
       [{ t: 'text', text: model.title || '试卷' }],
       { size: titleSize, b: true, bodyFont: opt.titleFont, latinFont: opt.titleFont }));
     if (model.std) {
-      pushP(paraXml({ align: 'center', before: 0, after: 10, line: 1.0 },
+      headXml.push(paraXml({ align: 'center', before: 0, after: 10, line: 1.0 },
         [{ t: 'text', text: model.std }], { size: Math.max(10, opt.fontSize - 1.5) }));
     }
 
@@ -338,9 +351,9 @@
             };
             pushP(paraXml(opts2, items, o));
           } else if (b.kind === 'options') {
-            pushT(optionsXml(b, resolveItems, tableXml, opt, textW, bi === 0, o));
+            pushT(optionsXml(b, resolveItems, tableXml, opt, colW, bi === 0, o));
           } else if (b.kind === 'data') {
-            pushT(dataXml(b, resolveItems, tableXml, opt, textW, o));
+            pushT(dataXml(b, resolveItems, tableXml, opt, colW, o));
           }
         }
 
@@ -372,10 +385,20 @@
         return out.join('');
       }
       var n = Math.min(cols, ncol);
+      // 栏太窄时（如 A4 双栏每栏 8cm），4 列选项挤成一团，自动降为 2 列
+      if (n > 2 && textW / n < 3.4) n = 2;
+      if (n > 2 && ncol < n) n = ncol;
+
+      // 把单元格按行优先摊平，再按 n 列重新切行
+      var flat = [];
+      b.rows.forEach(function (row) { row.forEach(function (cell) { flat.push(cell); }); });
+      var rows2 = [];
+      for (var k = 0; k < flat.length; k += n) rows2.push(flat.slice(k, k + n));
+
       var cw = textW / n;
       var widths = new Array(n).fill(cw);
       var cellXml = function (r, c, cellW) {
-        var items = resolveItems(b.rows[r] && b.rows[r][c] ? b.rows[r][c] : [], cellW - 0.35);
+        var items = resolveItems(rows2[r] && rows2[r][c] ? rows2[r][c] : [], cellW - 0.35);
         var hasI = hasImg(items);
         if (hasI) {
           // 题号与图分两行居中
@@ -394,10 +417,10 @@
         }
         return '<w:p>' + pPr({ align: 'left', before: 0, after: 0, line: opt.lineSpacing }) + itemsXml(items, o) + '</w:p>';
       };
-      return tableXml(b.rows, n, widths, { border: false, center: false, vAlign: 'top', cellXml: cellXml });
+      return tableXml(rows2, n, widths, { border: false, center: false, vAlign: 'top', cellXml: cellXml });
     }
 
-    function dataXml(b, resolveItems, tableXml, opt, textW, o) {
+    function dataXml(b, resolveItems, tableXml, opt, colW, o) {
       var ncols = 1;
       b.rows.forEach(function (r) { ncols = Math.max(ncols, r.length); });
       var nat = (b.tw || 400) * 0.75 * (opt.fontSize / 10.5) * opt.imgScale * 2.54 / 72;
@@ -430,14 +453,36 @@
     }
 
     progress('生成文档…');
-    var sectPr = '<w:sectPr><w:footerReference w:type="default" r:id="rIdFtr"/>' +
-      '<w:pgSz w:w="11906" w:h="16838"/>' +
+
+    // 页面几何（A4 纵向 / A3 横向 / 8 开 / 16 开）
+    var pgW = tw(lay.w), pgH = tw(lay.h);
+    var landscape = lay.w > lay.h;
+    var pageBits = '<w:pgSz w:w="' + pgW + '" w:h="' + pgH + '"' + (landscape ? ' w:orient="landscape"' : '') + '/>' +
       '<w:pgMar w:top="' + tw(opt.margin) + '" w:right="' + tw(opt.margin) + '" w:bottom="' + tw(opt.margin - 0.2) +
-      '" w:left="' + tw(opt.margin) + '" w:header="' + tw(1.2) + '" w:footer="' + tw(1.0) + '" w:gutter="0"/>' +
-      '<w:cols w:space="425"/></w:sectPr>';
+      '" w:left="' + tw(opt.margin) + '" w:header="' + tw(1.2) + '" w:footer="' + tw(1.0) + '" w:gutter="0"/>';
+    var colsBits = function (n) {
+      return n > 1
+        ? '<w:cols w:num="' + n + '" w:space="' + tw(colGap) + '" w:equalWidth="1"/>'
+        : '<w:cols w:space="' + tw(colGap) + '"/>';
+    };
+
+    // 正文分栏（双栏时紧接卷头，用连续节避免分页）
+    var sectPr = '<w:sectPr><w:footerReference w:type="default" r:id="rIdFtr"/>' +
+      (lay.cols > 1 ? '<w:type w:val="continuous"/>' : '') +
+      pageBits + colsBits(lay.cols) + '</w:sectPr>';
+
+    // 双栏时，卷头（标题/考生信息）单独成一段"单栏"连续节，让标题横跨整页
+    var headPart = headXml.join('');
+    if (lay.cols > 1) {
+      headPart += '<w:p><w:pPr><w:sectPr>' +
+        '<w:footerReference w:type="default" r:id="rIdFtr"/>' +
+        '<w:type w:val="continuous"/>' +
+        pageBits + colsBits(1) + '</w:sectPr></w:pPr>' +
+        '<w:r><w:rPr><w:sz w:val="2"/></w:rPr></w:r></w:p>';
+    }
 
     var docXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
-      '<w:document ' + W_NS + '><w:body>' + body.join('') + sectPr + '</w:body></w:document>';
+      '<w:document ' + W_NS + '><w:body>' + headPart + body.join('') + sectPr + '</w:body></w:document>';
 
     var stylesXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
       '<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">' +

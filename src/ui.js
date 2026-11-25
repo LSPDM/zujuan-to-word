@@ -180,8 +180,23 @@
   }
 
   /* ---------- 参数 ---------- */
+  var LAYOUT_HINT = {
+    'a4-1': 'A4 单栏：一张 A4 一页，普通打印机直接出。',
+    'a3-2': '<b>A3 横向双栏</b>：一张 A3 正反印，对折就是 A4 大小，最接近正式考试卷；卷头（标题/考生信息）自动横跨两栏。',
+    '8k-2': '<b>8 开横向双栏</b>（420×285mm）：国内试卷常用开本，家用打印机一般不支持，适合送文印店。',
+    'a4-2': '<b>A4 双栏</b>：左右分栏、题目自动流到下一栏；图会缩到栏宽（约 8cm），适合题量少的卷子。',
+    '16k-1': '16 开单栏（195×270mm）：比 A4 略窄，用 16 开纸打印时选它。'
+  };
+
+  function syncLayoutHint() {
+    var el = $('layoutHint');
+    if (!el) return;
+    el.innerHTML = LAYOUT_HINT[$('optLayout').value] || '';
+  }
+
   function readOptions() {
     return {
+      layout: $('optLayout').value,
       fontSize: parseFloat($('optFont').value),
       lineSpacing: parseFloat($('optLine').value),
       imgScale: parseFloat($('optImg').value),
@@ -267,11 +282,14 @@
 
   $btn.addEventListener('click', convert);
 
-  ['optFont', 'optLine', 'optImg', 'optMargin', 'optAns', 'optGap'].forEach(function (id) {
+  ['optLayout', 'optFont', 'optLine', 'optImg', 'optMargin', 'optAns', 'optGap'].forEach(function (id) {
     $(id).addEventListener('change', function () {
       if (state.htmlText) doPreview();
     });
   });
+
+  syncLayoutHint();
+  $('optLayout').addEventListener('change', syncLayoutHint);
 
   // 默认展开说明
   var tips = $('tips');

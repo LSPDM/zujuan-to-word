@@ -10,6 +10,7 @@
   var TWIP = 567;              // 1cm = 567 twips
 
   var DEFAULT_OPTIONS = {
+    layout: 'a4-1',           // 版面：a4-1 / a4-2 / a3-2 / 8k-2 / 16k-1
     fontSize: 12,             // 小四=12, 四号=14, 五号=10.5, 三号=16
     lineSpacing: 1.05,        // 行距倍数
     imgScale: 1.0,            // 图片额外缩放

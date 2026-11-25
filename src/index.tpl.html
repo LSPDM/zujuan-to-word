@@ -75,6 +75,9 @@
     background-repeat: no-repeat; background-position: right 10px center;
   }
   .opt select:focus { outline: 2px solid #cddcff; border-color: var(--blue); }
+  .opt-wide { grid-column: 1 / -1; }
+  .hintline { font-size: 12px; color: #8b94a7; margin-top: 6px; line-height: 1.5; }
+  .hintline b { color: var(--blue-d); font-weight: 600; }
   .check { display: flex; align-items: center; gap: 8px; font-size: 13px; margin-top: 14px; color: var(--ink2); }
   .check input { width: 16px; height: 16px; accent-color: var(--blue); }
 
@@ -168,6 +171,17 @@
     <div class="step">
       <div class="step-head"><span class="badge">3</span><span class="step-title">排版参数</span></div>
       <div class="opts">
+        <div class="opt opt-wide">
+          <label for="optLayout">版面 / 纸张</label>
+          <select id="optLayout">
+            <option value="a4-1" selected>A4 单栏（家用打印机，默认）</option>
+            <option value="a3-2">A3 横向双栏（正式考试卷，正反印）</option>
+            <option value="8k-2">8 开横向双栏（420×285mm）</option>
+            <option value="a4-2">A4 双栏（题量少时省纸）</option>
+            <option value="16k-1">16 开单栏（195×270mm）</option>
+          </select>
+          <div class="hintline" id="layoutHint">A4 单栏：一张 A4 一页，普通打印机直接出。</div>
+        </div>
         <div class="opt">
           <label for="optFont">正文字号</label>
           <select id="optFont">

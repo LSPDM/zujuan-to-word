@@ -4,6 +4,10 @@
 
 纯前端单文件，双击即用，不联网、不上传任何文件。
 
+**在线使用**：<https://lspdm.github.io/zujuan-to-word/> （由 GitHub Actions 从 `src/` 构建后发布）
+
+**直接下载**：<https://github.com/LSPDM/zujuan-to-word/raw/main/dist/index.html> （右键另存为，双击即可离线使用）
+
 ![界面截图](docs/screenshot.png)
 
 ## 为什么需要它

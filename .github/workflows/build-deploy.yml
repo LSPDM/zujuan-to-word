@@ -12,7 +12,8 @@ permissions:
   id-token: write
 
 concurrency:
-  group: pages
+  # 按 ref 分组：打标签时的构建不会取消 main 分支的部署
+  group: pages-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
